@@ -159,7 +159,7 @@ public class LoginForm extends javax.swing.JFrame {
                 String fullName = rs.getString("first_name") + " " + rs.getString("last_name");
                 JOptionPane.showMessageDialog(this, "Welcome " + fullName + ",it's great to see you!");
                 
-                new QuickChatWindow().setVisible(true);
+                new QuickChatWindow(); 
                 this.dispose();
             } else {
                 JOptionPane.showMessageDialog(this, "Username or password incorrect, please try again.");
