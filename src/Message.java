@@ -1,19 +1,19 @@
-import org.json.simple.JSONArray;
-import org.json.simple.JSONObject;
-
 import java.io.FileWriter;
+import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Scanner;
 import java.util.List;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.parser.JSONParser;
 
 public class Message {
-    private static int totalMessages = 0;
+
     private String messageId;
     private String recipient;
     private String text;
     private String hash;
-
-    public static List<Message> storedMessages = new ArrayList<>();
 
     public Message(String messageId, String recipient, String text) {
         this.messageId = messageId;
@@ -22,69 +22,107 @@ public class Message {
         this.hash = createMessageHash();
     }
 
-    // Message ID validation
     public boolean checkMessageID() {
-        return messageId != null && messageId.matches("\\d{10}");
+        return messageId.matches("\\d{10}");
     }
 
-    // Recipient cell validation
     public boolean checkRecipientCell() {
-        return recipient != null && recipient.matches("\\+27\\d{9}");
+        return recipient.startsWith("+27") && recipient.length() == 12;
     }
 
     public String createMessageHash() {
-        if (text == null || text.trim().isEmpty()) return "INVALID";
-        String[] words = text.trim().split("\\s+");
-        String first = words[0];
-        String last = words[words.length - 1];
-        String prefix = messageId.length() >= 2 ? messageId.substring(0, 2) : "00";
-        return prefix + ":" + (totalMessages + 1) + ":" + (first + " " + last).toUpperCase();
+        String[] words = text.split(" ");
+        String first = words.length > 0 ? words[0] : "";
+        String last = words.length > 1 ? words[words.length - 1] : first;
+        return messageId.substring(0, 2) + ":" + messageId + ":" + first.toUpperCase() + "-" + last.toUpperCase();
     }
 
     public void SentMessage() {
-        totalMessages++;
-        System.out.println("Message sent: " + this);
-    }
-
-    public static void printMessages() {
-        for (Message msg : storedMessages) {
-            System.out.println(msg);
-        }
-    }
-
-    public static int returnTotalMessages() {
-        return totalMessages;
+        MessageManager.sentMessages.add(this);
+        MessageManager.messageHashes.add(this.hash);
+        MessageManager.messageIds.add(this.messageId);
     }
 
     public void storeMessage() {
-        storedMessages.add(this);
-        saveMessagesToJSON();
+        MessageManager.storedMessages.add(this);
+        MessageManager.messageHashes.add(this.hash);
+        MessageManager.messageIds.add(this.messageId);
+        saveToJsonFile();
+    }
+
+    public void discardMessage() {
+        MessageManager.disregardedMessages.add(this);
+    }
+
+    public static int returnTotalMessages() {
+        return MessageManager.sentMessages.size();
+    }
+
+    public static void loadStoredMessagesFromJson() {
+        JSONParser parser = new JSONParser();
+        try (FileReader reader = new FileReader("storedMessages.json")) {
+            JSONArray messageArray = (JSONArray) parser.parse(reader);
+            for (Object obj : messageArray) {
+                JSONObject msg = (JSONObject) obj;
+                String id = (String) msg.get("messageId");
+                String recipient = (String) msg.get("recipient");
+                String text = (String) msg.get("text");
+                Message m = new Message(id, recipient, text);
+                MessageManager.storedMessages.add(m);
+                MessageManager.messageHashes.add(m.getHash());
+                MessageManager.messageIds.add(m.getMessageId());
+            }
+        } catch (Exception e) {
+            System.out.println("Error loading stored messages: " + e.getMessage());
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private void saveMessagesToJSON() {
-        JSONArray messageArray = new JSONArray();
-        for (Message msg : storedMessages) {
-            JSONObject obj = new JSONObject();
-            obj.put("messageId", msg.messageId);
-            obj.put("recipient", msg.recipient);
-            obj.put("text", msg.text);
-            obj.put("hash", msg.hash);
-            messageArray.add(obj);
-        }
+    private void saveToJsonFile() {
+        JSONArray messages = new JSONArray();
 
-        try (FileWriter file = new FileWriter("messages.json")) {
-            file.write(messageArray.toJSONString());
-            file.flush();
+        // Load current JSON content
+        try (FileReader reader = new FileReader("storedMessages.json")) {
+            JSONParser parser = new JSONParser();
+            messages = (JSONArray) parser.parse(reader);
+        } catch (Exception ignored) {}
+
+        // Add this message
+        JSONObject obj = new JSONObject();
+        obj.put("messageId", messageId);
+        obj.put("recipient", recipient);
+        obj.put("text", text);
+        messages.add(obj);
+
+        // Save
+        try (FileWriter file = new FileWriter("storedMessages.json")) {
+            file.write(messages.toJSONString());
         } catch (IOException e) {
-            System.out.println("Error writing JSON: " + e.getMessage());
+            System.out.println("Error writing to JSON file: " + e.getMessage());
         }
+    }
+
+    public String getMessageId() {
+        return messageId;
+    }
+
+    public String getRecipient() {
+        return recipient;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public String getHash() {
+        return hash;
     }
 
     @Override
     public String toString() {
-        return "To: " + recipient + "\nText: " + text + "\nHash: " + hash + "\n";
+        return "Message ID: " + messageId +
+                "\nRecipient: " + recipient +
+                "\nText: " + text +
+                "\nHash: " + hash;
     }
 }
-
-

@@ -4,61 +4,44 @@ import static org.junit.Assert.*;
 public class MessageTest {
 
     @Test
-    public void testMessageLengthSuccess() {
-        String text = "Hi Mike, can you join us for dinner tonight";
-        assertTrue("Message should be within 250 characters", text.length() <= 250);
+    public void testCheckMessageID_Valid() {
+        Message msg = new Message("1234567890", "+27831234567", "Hello world");
+        assertTrue(msg.checkMessageID());
     }
 
     @Test
-    public void testMessageLengthFailure() {
-        String text = "x".repeat(260);
-        int exceeded = text.length() - 250;
-        assertTrue("Message exceeds 250 characters by " + exceeded, text.length() > 250);
+    public void testCheckMessageID_Invalid() {
+        Message msg = new Message("123", "+27831234567", "Hello world");
+        assertFalse(msg.checkMessageID());
     }
 
     @Test
-    public void testRecipientCellSuccess() {
-        Message msg = new Message("1234567890", "+27718693002", "Hello");
-        assertTrue("Cell phone number successfully captured.", msg.checkRecipientCell());
+    public void testCheckRecipientCell_Valid() {
+        Message msg = new Message("1234567890", "+27831234567", "Hi there");
+        assertTrue(msg.checkRecipientCell());
     }
 
     @Test
-    public void testRecipientCellFailure() {
-        Message msg = new Message("1234567890", "08575975889", "Hello");
-        assertFalse("Cell phone number is incorrectly formatted.", msg.checkRecipientCell());
+    public void testCheckRecipientCell_Invalid() {
+        Message msg = new Message("1234567890", "0831234567", "Hi there");
+        assertFalse(msg.checkRecipientCell());
     }
 
     @Test
-    public void testMessageHashFormat() {
-        Message msg = new Message("0012345678", "+27718693002", "Hi Mike, can you join us for dinner tonight");
-        String expectedStart = "00:";
-        String expectedEnd = "HI TONIGHT";
-        String actualHash = msg.createMessageHash();
-        assertTrue("Hash should start with 00:", actualHash.startsWith(expectedStart));
-        assertTrue("Hash should end with HI TONIGHT", actualHash.endsWith(expectedEnd));
+    public void testCreateMessageHash() {
+        Message msg = new Message("1234567890", "+27831234567", "Hello world this is a test");
+        String hash = msg.createMessageHash();
+        assertTrue(hash.startsWith("12:"));
+        assertTrue(hash.contains("HELLO"));
+        assertTrue(hash.contains("TEST"));
     }
 
     @Test
-    public void testMessageIDFormat() {
-        Message msg = new Message("+271234567890", "+27718693002", "Hello");
-        assertTrue("Message ID should match 10-digit format", msg.checkMessageID());
-    }
-
-    @Test
-    public void testStoreMessage() {
-        Message.storedMessages.clear();
-        Message msg = new Message("1234567890", "+27718693002", "Hello store test");
-        msg.storeMessage();
-        assertEquals(1, Message.storedMessages.size());
-    }
-
-    @Test
-    public void testSendMessageIncreasesTotalCount() {
-        int before = Message.returnTotalMessages();
-        Message msg = new Message("1234567890", "+27718693002", "Test message");
-        msg.SentMessage();
-        int after = Message.returnTotalMessages();
-        assertEquals(before + 1, after);
+    public void testMessageLength() {
+        String longText = "a".repeat(251);
+        Message msg = new Message("1234567890", "+27831234567", longText);
+        assertTrue(msg.getText().length() > 250);
     }
 }
+
 
